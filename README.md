@@ -21,7 +21,17 @@ DSH ships `send_message` and `list_agents`, but strictly hierarchical: a parent 
 
 ## Install
 
-Add the bundle to every profile that should participate (each side of a conversation needs it):
+Before installing from GitHub, allow the build hook in the profile workspace:
+
+```yaml
+# ~/.dsh/profiles/web/pnpm-workspace.yaml
+packages:
+  - .
+allowBuilds:
+  '@dsh-crosstalk/bundle': true
+```
+
+Then add the bundle to every profile that should participate (each side of a conversation needs it):
 
 ```sh
 dsh plugin --profile web add github:Jesse-njx/dsh-crosstalk
@@ -33,11 +43,13 @@ For a local checkout, link the repo root:
 ```sh
 git clone https://github.com/Jesse-njx/dsh-crosstalk
 cd dsh-crosstalk
+pnpm install
+pnpm build
 dsh plugin --profile web add "$PWD"
 dsh plugin --profile <other-profile> add "$PWD"
 ```
 
-The package builds `lib/` from `src/` on install, and also rebuilds missing/stale `lib/` at plugin load when pnpm skips lifecycle scripts. No reinstall is needed after source changes; restart DSH so the linked package reloads.
+GitHub installs build `lib/` from `src/` with the package's `postinstall` hook. Linked checkouts load the compiled `lib/`; after source changes, run `pnpm build` and restart DSH. No reinstall is needed.
 
 That's it. Two terminals (or two repos) running DSH with the bundle installed can now do:
 

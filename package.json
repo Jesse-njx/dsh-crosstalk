@@ -20,40 +20,43 @@
   },
   "homepage": "https://github.com/Jesse-njx/dsh-crosstalk#readme",
   "type": "module",
-  "main": "./index.js",
-  "types": "./src/index.ts",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./index.js"
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
     },
     "./identity": {
-      "types": "./src/identity.ts",
+      "types": "./lib/identity.d.ts",
       "default": "./lib/identity.js"
     },
     "./registry": {
-      "types": "./src/registry.ts",
+      "types": "./lib/registry.d.ts",
       "default": "./lib/registry.js"
     },
     "./message": {
-      "types": "./src/message.ts",
+      "types": "./lib/message.d.ts",
       "default": "./lib/message.js"
     },
     "./deliver": {
-      "types": "./src/deliver.ts",
+      "types": "./lib/deliver.d.ts",
       "default": "./lib/deliver.js"
     },
     "./tools": {
-      "types": "./src/tools.ts",
+      "types": "./lib/tools.d.ts",
       "default": "./lib/tools.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
-    "index.js",
     "scripts",
     "src",
     "lib",
+    "tsconfig.json",
+    "tsconfig.base.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
     "cordis.patch.yml",
     "README.md",
     "README.zh.md",

@@ -17,7 +17,17 @@
 
 ## 安装
 
-给每个需要参与的 profile 添加 bundle：
+从 GitHub 安装前，先在 profile 所在的 pnpm workspace 允许该包执行构建脚本：
+
+```yaml
+# ~/.dsh/profiles/web/pnpm-workspace.yaml
+packages:
+  - .
+allowBuilds:
+  '@dsh-crosstalk/bundle': true
+```
+
+然后给每个需要参与的 profile 添加 bundle：
 
 ```sh
 dsh plugin --profile web add github:Jesse-njx/dsh-crosstalk
@@ -29,11 +39,13 @@ dsh plugin --profile <other-profile> add github:Jesse-njx/dsh-crosstalk
 ```sh
 git clone https://github.com/Jesse-njx/dsh-crosstalk
 cd dsh-crosstalk
+pnpm install
+pnpm build
 dsh plugin --profile web add "$PWD"
 dsh plugin --profile <other-profile> add "$PWD"
 ```
 
-安装时会从 `src/` 编译出 `lib/`；如果 pnpm 跳过生命周期脚本，插件加载时也会补编译缺失或过期的 `lib/`。源码变更后无需重装，重启 DSH 让链接包重新加载即可。
+GitHub 安装会通过包内的 `postinstall` 钩子从 `src/` 编译出 `lib/`。目录链接加载的是编译后的 `lib/`；源码变更后运行 `pnpm build` 并重启 DSH 即可，不需要重装。
 
 ## 配置
 
