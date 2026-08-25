@@ -20,36 +20,39 @@
   },
   "homepage": "https://github.com/Jesse-njx/dsh-crosstalk#readme",
   "type": "module",
-  "main": "./lib/index.js",
-  "types": "./lib/index.d.ts",
+  "main": "./index.js",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
+      "types": "./src/index.ts",
+      "default": "./index.js"
     },
     "./identity": {
-      "types": "./lib/identity.d.ts",
+      "types": "./src/identity.ts",
       "default": "./lib/identity.js"
     },
     "./registry": {
-      "types": "./lib/registry.d.ts",
+      "types": "./src/registry.ts",
       "default": "./lib/registry.js"
     },
     "./message": {
-      "types": "./lib/message.d.ts",
+      "types": "./src/message.ts",
       "default": "./lib/message.js"
     },
     "./deliver": {
-      "types": "./lib/deliver.d.ts",
+      "types": "./src/deliver.ts",
       "default": "./lib/deliver.js"
     },
     "./tools": {
-      "types": "./lib/tools.d.ts",
+      "types": "./src/tools.ts",
       "default": "./lib/tools.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
+    "index.js",
+    "scripts",
+    "src",
     "lib",
     "cordis.patch.yml",
     "README.md",
@@ -63,6 +66,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"test/*.test.ts\"",
+    "postinstall": "node ./scripts/build-lib.mjs",
     "prepack": "pnpm build",
     "prepublishOnly": "pnpm build"
   },

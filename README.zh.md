@@ -17,20 +17,23 @@
 
 ## 安装
 
-从仓库检出安装：
+给每个需要参与的 profile 添加 bundle：
+
+```sh
+dsh plugin --profile web add github:Jesse-njx/dsh-crosstalk
+dsh plugin --profile <other-profile> add github:Jesse-njx/dsh-crosstalk
+```
+
+本地检出时，链接仓库根目录：
 
 ```sh
 git clone https://github.com/Jesse-njx/dsh-crosstalk
 cd dsh-crosstalk
-pnpm install
-pnpm build
 dsh plugin --profile web add "$PWD"
 dsh plugin --profile <other-profile> add "$PWD"
 ```
 
-目录链接加载的是编译后的 `lib/`；改完 `src/` 后重新运行 `pnpm build` 即可，不需要重装。
-
-（发布到 npm 后，`dsh plugin add @dsh-crosstalk/bundle` 同样可用。）
+安装时会从 `src/` 编译出 `lib/`；如果 pnpm 跳过生命周期脚本，插件加载时也会补编译缺失或过期的 `lib/`。源码变更后无需重装，重启 DSH 让链接包重新加载即可。
 
 ## 配置
 
