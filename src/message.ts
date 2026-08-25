@@ -65,21 +65,15 @@ export function crosstalkSource(from: MessageSender, notifyUser: boolean): {
   }
 }
 
-function deepFreeze<T>(value: T): T {
-  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value
-  for (const child of Object.values(value)) deepFreeze(child)
-  return Object.freeze(value)
-}
-
 /** Build the injected model-facing turn for one parsed message file. */
 export function toUserMessage(file: MessageFile, notifyUser: boolean): UserMessage {
   const content: ContentBlock[] = [{ type: 'text', text: frameText(file.from, file.text, file.summary) }]
-  return deepFreeze({
+  return {
     id: randomUUID(),
     role: 'user',
     content,
     source: crosstalkSource(file.from, notifyUser),
-  }) as UserMessage
+  } as UserMessage
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
