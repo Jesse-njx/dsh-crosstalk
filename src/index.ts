@@ -32,7 +32,6 @@ import type {} from '@deepseek-ai/cordis-plugin-timer'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import z from '@deepseek-ai/schemastery'
 import { currentUid, mintRef, sessionName, NAME_PATTERN, REF_PATTERN, type SessionName, type SessionRef } from './identity.ts'
 import { HeartbeatRegistry } from './registry.ts'
 import { mintMessageId, writeMessageFile } from './message.ts'
@@ -57,7 +56,7 @@ export function defaultHomeDir(): string {
   return join(dshHome(), 'crosstalk')
 }
 
-/** Plugin config with defaults applied by the loader. */
+/** Plugin config; omitted fields are filled by resolveConfig(). */
 export interface Config {
   /** Registry root (`~/.dsh/crosstalk` by default). */
   homeDir?: string
@@ -85,20 +84,72 @@ export interface Config {
   now?: () => number
 }
 
-export const Config: z<Config> = z.object({
-  homeDir: z.string().default(defaultHomeDir()),
-  cwd: z.string().default(process.cwd()),
-  name: z.string(),
-  accept: z.string().default('same-user'),
-  mode: z.union([z.const('open'), z.const('allowlist')]).default('open'),
-  allowlist: z.array(z.string()).default([]),
-  notifyUser: z.boolean().default(true),
-  heartbeatIntervalMs: z.number().default(10_000),
-  inboxPollMs: z.number().default(1_000),
-  staleAfterMs: z.number(),
-  maxInboxAttempts: z.number().default(30),
-  now: z.function(),
-})
+type ConfigIssue = { message: string; path?: (string | number)[] }
+
+type ConfigValidationResult = { value: Config } | { issues: ConfigIssue[] }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function takeString(input: Record<string, unknown>, key: keyof Config, issues: ConfigIssue[], out: Config): void {
+  const value = input[key]
+  if (value === undefined) return
+  if (typeof value === 'string') {
+    out[key] = value as never
+    return
+  }
+  issues.push({ path: [key], message: 'expected string' })
+}
+
+function takeNumber(input: Record<string, unknown>, key: keyof Config, issues: ConfigIssue[], out: Config): void {
+  const value = input[key]
+  if (value === undefined) return
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    out[key] = value as never
+    return
+  }
+  issues.push({ path: [key], message: 'expected finite number' })
+}
+
+/** Minimal standard-schema config validator; runtime defaults live in resolveConfig(). */
+export const Config = {
+  '~standard': {
+    version: 1,
+    vendor: 'dsh-crosstalk',
+    validate(value: unknown): ConfigValidationResult {
+      if (value === undefined) return { value: {} }
+      if (!isRecord(value)) return { issues: [{ message: 'expected object' }] }
+      const issues: ConfigIssue[] = []
+      const out: Config = {}
+      takeString(value, 'homeDir', issues, out)
+      takeString(value, 'cwd', issues, out)
+      takeString(value, 'name', issues, out)
+      takeString(value, 'accept', issues, out)
+      if (value.mode !== undefined) {
+        if (value.mode === 'open' || value.mode === 'allowlist') out.mode = value.mode
+        else issues.push({ path: ['mode'], message: 'expected "open" or "allowlist"' })
+      }
+      if (value.allowlist !== undefined) {
+        if (Array.isArray(value.allowlist) && value.allowlist.every((entry) => typeof entry === 'string')) out.allowlist = value.allowlist
+        else issues.push({ path: ['allowlist'], message: 'expected string array' })
+      }
+      if (value.notifyUser !== undefined) {
+        if (typeof value.notifyUser === 'boolean') out.notifyUser = value.notifyUser
+        else issues.push({ path: ['notifyUser'], message: 'expected boolean' })
+      }
+      takeNumber(value, 'heartbeatIntervalMs', issues, out)
+      takeNumber(value, 'inboxPollMs', issues, out)
+      takeNumber(value, 'staleAfterMs', issues, out)
+      takeNumber(value, 'maxInboxAttempts', issues, out)
+      if (value.now !== undefined) {
+        if (typeof value.now === 'function') out.now = value.now as () => number
+        else issues.push({ path: ['now'], message: 'expected function' })
+      }
+      return issues.length === 0 ? { value: out } : { issues }
+    },
+  },
+} as const
 
 /** Config with all defaults resolved (including computed `staleAfterMs`). */
 export interface ResolvedConfig {
@@ -119,7 +170,7 @@ export interface ResolvedConfig {
 }
 
 /** Resolve loader config into the effective runtime config. */
-export function resolveConfig(config: Config): ResolvedConfig {
+export function resolveConfig(config: Config = {}): ResolvedConfig {
   if (config.accept !== undefined && config.accept !== 'same-user') {
     throw new Error(
       `dsh-crosstalk: accept "${config.accept}" is not supported in v0.1 — only "same-user" (fixed) is available`,
@@ -338,7 +389,7 @@ export class Crosstalk implements CrosstalkServiceContract {
 }
 
 /** Mount the crosstalk service, trust prompt section, and tool decoration. */
-export function apply(ctx: Context, config: Config): void {
+export function apply(ctx: Context, config: Config = {}): void {
   const resolved = resolveConfig(config)
   const runtime = new Crosstalk(ctx, resolved)
   ctx.provide('crosstalk', runtime)

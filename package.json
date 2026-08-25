@@ -20,36 +20,38 @@
   },
   "homepage": "https://github.com/Jesse-njx/dsh-crosstalk#readme",
   "type": "module",
-  "main": "./lib/index.js",
-  "types": "./lib/index.d.ts",
+  "main": "./index.js",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
+      "types": "./src/index.ts",
+      "default": "./index.js"
     },
     "./identity": {
-      "types": "./lib/identity.d.ts",
+      "types": "./src/identity.ts",
       "default": "./lib/identity.js"
     },
     "./registry": {
-      "types": "./lib/registry.d.ts",
+      "types": "./src/registry.ts",
       "default": "./lib/registry.js"
     },
     "./message": {
-      "types": "./lib/message.d.ts",
+      "types": "./src/message.ts",
       "default": "./lib/message.js"
     },
     "./deliver": {
-      "types": "./lib/deliver.d.ts",
+      "types": "./src/deliver.ts",
       "default": "./lib/deliver.js"
     },
     "./tools": {
-      "types": "./lib/tools.d.ts",
+      "types": "./src/tools.ts",
       "default": "./lib/tools.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
+    "index.js",
+    "src",
     "lib",
     "cordis.patch.yml",
     "README.md",
@@ -63,6 +65,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"test/*.test.ts\"",
+    "prepack": "pnpm build",
     "prepublishOnly": "pnpm build"
   },
   "dsh": {
@@ -78,8 +81,33 @@
     "@deepseek-ai/dsh-scope": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-session": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "^3.18.1"
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/cordis-plugin-timer": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-agent": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-scope": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-session": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-system-prompt": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -90,7 +118,6 @@
     "@deepseek-ai/dsh-session": "0.1.0-rc.6",
     "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.6",
     "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "^3.18.1",
     "@types/node": "^24.13.3",
     "typescript": "^5.9.0"
   }

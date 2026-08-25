@@ -9,11 +9,10 @@
  * @module @dsh-crosstalk/bundle/message
  */
 
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import type { ContentBlock, UserMessage } from '@deepseek-ai/dsh-llm'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import { ensureDir, readJsonFile, unlinkQuiet, writeJsonAtomic } from './atomic.ts'
 import type { MessageFile, MessageSender } from './types.ts'
 
@@ -55,24 +54,32 @@ export function crosstalkSource(from: MessageSender, notifyUser: boolean): {
     return {
       ...base,
       form: 'relay' as const,
-      ...(from.sessionId === undefined ? {} : { senderSessionId: SessionId(from.sessionId) }),
+      ...(from.sessionId === undefined ? {} : { senderSessionId: from.sessionId as SessionId }),
     }
   }
   return {
     ...base,
     form: 'notice' as const,
-    ...(from.sessionId === undefined ? {} : { senderSessionId: SessionId(from.sessionId) }),
+    ...(from.sessionId === undefined ? {} : { senderSessionId: from.sessionId as SessionId }),
     summary: noticeSummary(from),
   }
+}
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value
+  for (const child of Object.values(value)) deepFreeze(child)
+  return Object.freeze(value)
 }
 
 /** Build the injected model-facing turn for one parsed message file. */
 export function toUserMessage(file: MessageFile, notifyUser: boolean): UserMessage {
   const content: ContentBlock[] = [{ type: 'text', text: frameText(file.from, file.text, file.summary) }]
-  return createUserMessage({
+  return deepFreeze({
+    id: randomUUID(),
+    role: 'user',
     content,
     source: crosstalkSource(file.from, notifyUser),
-  })
+  }) as UserMessage
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

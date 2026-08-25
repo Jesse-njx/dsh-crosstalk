@@ -12,8 +12,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { scopeOf } from '@deepseek-ai/dsh-scope'
-import { defineTool, type JsonValue, type ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { JsonValue, ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type { PeerInfo, CrosstalkService } from './types.ts'
 
 /** The peer row shape added to `list_agents`. */
@@ -29,24 +28,26 @@ export interface PeerRow {
 const peerSchema = {
   type: 'object' as const,
   additionalProperties: false,
+  required: ['kind', 'name', 'ref', 'status', 'cwd', 'lastActivity'],
   properties: {
-    kind: { type: 'string' as const, required: true as const, enum: ['peer' as const] },
-    name: { type: 'string' as const, required: true as const },
-    ref: { type: 'string' as const, required: true as const },
-    status: { type: 'string' as const, required: true as const, enum: ['running' as const, 'idle' as const, 'ready' as const] },
-    cwd: { type: 'string' as const, required: true as const },
-    lastActivity: { type: 'number' as const, required: true as const },
+    kind: { type: 'string' as const, enum: ['peer' as const] },
+    name: { type: 'string' as const },
+    ref: { type: 'string' as const },
+    status: { type: 'string' as const, enum: ['running' as const, 'idle' as const, 'ready' as const] },
+    cwd: { type: 'string' as const },
+    lastActivity: { type: 'number' as const },
   },
 }
 
 const childSchema = {
   type: 'object' as const,
   additionalProperties: false,
+  required: ['kind', 'id', 'label', 'status'],
   properties: {
-    kind: { type: 'string' as const, required: true as const, enum: ['child' as const] },
-    id: { type: 'string' as const, required: true as const },
-    label: { type: 'string' as const, required: true as const },
-    status: { type: 'string' as const, required: true as const, enum: ['running' as const, 'idle' as const, 'ready' as const] },
+    kind: { type: 'string' as const, enum: ['child' as const] },
+    id: { type: 'string' as const },
+    label: { type: 'string' as const },
+    status: { type: 'string' as const, enum: ['running' as const, 'idle' as const, 'ready' as const] },
     parent: { type: 'string' as const },
     depth: { type: 'number' as const },
   },
@@ -55,10 +56,11 @@ const childSchema = {
 const diagnosticSchema = {
   type: 'object' as const,
   additionalProperties: false,
+  required: ['kind', 'id', 'reason'],
   properties: {
-    kind: { type: 'string' as const, required: true as const, enum: ['diagnostic' as const] },
-    id: { type: 'string' as const, required: true as const },
-    reason: { type: 'string' as const, required: true as const, enum: ['corrupt' as const, 'unsupported' as const, 'unavailable' as const] },
+    kind: { type: 'string' as const, enum: ['diagnostic' as const] },
+    id: { type: 'string' as const },
+    reason: { type: 'string' as const, enum: ['corrupt' as const, 'unsupported' as const, 'unavailable' as const] },
     parent: { type: 'string' as const },
     depth: { type: 'number' as const },
   },
@@ -82,6 +84,36 @@ export function renderPeerRow(row: PeerRow): string {
 }
 
 type ListAgentsScope = 'children' | 'descendants' | 'peers' | 'all'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isListAgentsScope(value: unknown): value is ListAgentsScope {
+  return value === 'children' || value === 'descendants' || value === 'peers' || value === 'all'
+}
+
+function parseListArgs(args: unknown): { scope?: ListAgentsScope } {
+  if (!isRecord(args)) return {}
+  const scope = args.scope
+  if (scope === undefined) return {}
+  if (!isListAgentsScope(scope)) throw new Error('list_agents: scope must be children, descendants, peers, or all')
+  return { scope }
+}
+
+function parseSendArgs(args: unknown): { to: string; message: string; summary?: string } {
+  if (!isRecord(args) || typeof args.to !== 'string' || typeof args.message !== 'string') {
+    throw new Error('send_message: to and message must be strings')
+  }
+  if (args.summary !== undefined && typeof args.summary !== 'string') {
+    throw new Error('send_message: summary must be a string when provided')
+  }
+  return {
+    to: args.to,
+    message: args.message,
+    ...(args.summary === undefined ? {} : { summary: args.summary }),
+  }
+}
 
 /** The canonical row union returned by the decorated `list_agents`. */
 export type AgentRow =
@@ -110,8 +142,8 @@ interface AllRow {
  * when absent, the stock scopes fail with a clear error instead of silently
  * returning nothing.
  */
-export function buildListAgents(service: CrosstalkService, stock: ToolDefinition | undefined) {
-  return defineTool({
+export function buildListAgents(service: CrosstalkService, stock: ToolDefinition | undefined): ToolDefinition {
+  return {
     name: 'list_agents',
     description: 'List the agents and sessions you can address. Scope `children` lists your direct background '
       + 'subagents; `descendants` walks the whole tree below you (depth-1 entries are send_message candidates, '
@@ -120,10 +152,14 @@ export function buildListAgents(service: CrosstalkService, stock: ToolDefinition
       + 'Peers are addressed in send_message by name or ref. The snapshot is not a delivery promise — send_message '
       + 'performs the authoritative check and may still fail.',
     parameters: {
-      scope: {
-        type: 'string',
-        enum: ['children', 'descendants', 'peers', 'all'],
-        description: 'children (default) lists direct children; descendants walks the tree below you; peers lists other live sessions on this machine; all combines descendants with peers.',
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        scope: {
+          type: 'string',
+          enum: ['children', 'descendants', 'peers', 'all'],
+          description: 'children (default) lists direct children; descendants walks the tree below you; peers lists other live sessions on this machine; all combines descendants with peers.',
+        },
       },
     },
     output: {
@@ -133,10 +169,10 @@ export function buildListAgents(service: CrosstalkService, stock: ToolDefinition
           oneOf: [childSchema, diagnosticSchema, peerSchema],
         },
       },
-      render: (args: { scope?: ListAgentsScope }, value: unknown) => {
-        const scope = args.scope ?? 'children'
+      render: (rawArgs: unknown, value: JsonValue) => {
+        const { scope = 'children' } = parseListArgs(rawArgs)
         if (scope === 'peers') {
-          const rows = value as PeerRow[]
+          const rows = value as unknown as PeerRow[]
           return [{
             type: 'text',
             text: rows.length === 0 ? '(no peer sessions)' : rows.map(renderPeerRow).join('\n'),
@@ -154,12 +190,12 @@ export function buildListAgents(service: CrosstalkService, stock: ToolDefinition
           return [{ type: 'text', text: lines.length === 0 ? '(nothing to list)' : lines.join('\n') }]
         }
         // children / descendants: reuse the stock renderer when present.
-        if (stock !== undefined) return stock.output.render({ scope }, value as JsonValue)
+        if (stock !== undefined) return stock.output.render({ scope }, value)
         return [{ type: 'text', text: '(subagent listing unavailable: dsh-tool-subagent-control is not installed)' }]
       },
     },
-    async execute(args: { scope?: ListAgentsScope }, exec): Promise<AgentRow[]> {
-      const scope = args.scope ?? 'children'
+    async execute(rawArgs: unknown, exec): Promise<AgentRow[]> {
+      const { scope = 'children' } = parseListArgs(rawArgs)
       if (scope === 'peers') {
         return service.peers().map(projectPeer)
       }
@@ -174,7 +210,7 @@ export function buildListAgents(service: CrosstalkService, stock: ToolDefinition
       }
       return (await stock.execute({ scope }, exec)) as AgentRow[]
     },
-  })
+  }
 }
 
 /**
@@ -182,8 +218,8 @@ export function buildListAgents(service: CrosstalkService, stock: ToolDefinition
  * refs are resolved through the crosstalk service; anything else falls back to
  * the captured stock definition (subagent follow-ups).
  */
-export function buildSendMessage(service: CrosstalkService, stock: ToolDefinition | undefined) {
-  return defineTool({
+export function buildSendMessage(service: CrosstalkService, stock: ToolDefinition | undefined): ToolDefinition {
+  return {
     name: 'send_message',
     description: 'Send a message to a background subagent by its subagent id (continuing the same conversation), or to '
       + 'another live DSH session on this machine by peer name or ref (from list_agents peers, dsh-crosstalk). For '
@@ -191,35 +227,43 @@ export function buildSendMessage(service: CrosstalkService, stock: ToolDefinitio
       + 'for a turn, if mid-turn it arrives at the next turn boundary, and delivery is best-effort. The sender\'s '
       + 'name rides along, so replying is just send_message back. A failure means the message was NOT delivered.',
     parameters: {
-      to: {
-        type: 'string',
-        required: true,
-        description: 'Subagent id (from subagent/list_agents), or a peer session name/ref (from list_agents peers).',
-      },
-      message: {
-        type: 'string',
-        required: true,
-        description: 'The message to deliver.',
-      },
-      summary: {
-        type: 'string',
-        description: 'Optional 5-10 word recap shown in the target session UI.',
+      type: 'object',
+      additionalProperties: false,
+      required: ['to', 'message'],
+      properties: {
+        to: {
+          type: 'string',
+          description: 'Subagent id (from subagent/list_agents), or a peer session name/ref (from list_agents peers).',
+        },
+        message: {
+          type: 'string',
+          description: 'The message to deliver.',
+        },
+        summary: {
+          type: 'string',
+          description: 'Optional 5-10 word recap shown in the target session UI.',
+        },
       },
     },
     output: {
       schema: {
         type: 'object',
         additionalProperties: false,
+        required: ['messageId'],
         properties: {
-          messageId: { type: 'string', required: true },
+          messageId: { type: 'string' },
         },
       },
-      render: (args: { to: string }, _value: unknown) => [{
-        type: 'text',
-        text: `message queued for ${args.to}`,
-      }],
+      render: (rawArgs: unknown) => {
+        const to = isRecord(rawArgs) && typeof rawArgs.to === 'string' ? rawArgs.to : '(unknown target)'
+        return [{
+          type: 'text',
+          text: `message queued for ${to}`,
+        }]
+      },
     },
-    async execute(args: { to: string; message: string; summary?: string }, exec) {
+    async execute(rawArgs: unknown, exec) {
+      const args = parseSendArgs(rawArgs)
       const resolution = service.resolve(args.to)
       if (resolution.kind === 'live') {
         const { messageId } = await service.send(args.to, { text: args.message, summary: args.summary })
@@ -236,7 +280,7 @@ export function buildSendMessage(service: CrosstalkService, stock: ToolDefinitio
       }
       return (await stock.execute({ subagent_id: args.to, message: args.message }, exec)) as { messageId: string }
     },
-  })
+  }
 }
 
 /**
@@ -247,12 +291,9 @@ export function buildSendMessage(service: CrosstalkService, stock: ToolDefinitio
 export function applyToolDecoration(ctx: Context, service: CrosstalkService): () => void {
   const disposers = new Set<() => void>()
   const decorate = (agent: Agent): void => {
-    // The agent's own scope is what the harness views and executes against;
-    // without it, get() returns the global view, which does not include the
-    // preset-mounted stock tools.
-    const scope = scopeOf(agent.ctx)
-    const listStock = agent.ctx.tools.get('list_agents', scope)
-    const sendStock = agent.ctx.tools.get('send_message', scope)
+    // The agent object is the dsh-scope key used by DSH's own prompt assembly.
+    const listStock = agent.ctx.tools.get('list_agents', agent)
+    const sendStock = agent.ctx.tools.get('send_message', agent)
     let listDisposer: () => void
     let sendDisposer: () => void
     try {

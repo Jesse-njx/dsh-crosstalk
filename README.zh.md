@@ -21,7 +21,6 @@
 
 ```sh
 git clone https://github.com/Jesse-njx/dsh-crosstalk
-cd dsh-crosstalk && pnpm install && pnpm build
 dsh plugin --profile web add /path/to/dsh-crosstalk
 dsh plugin --profile <other-profile> add /path/to/dsh-crosstalk
 ```
