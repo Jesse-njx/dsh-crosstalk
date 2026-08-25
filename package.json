@@ -54,7 +54,6 @@
     "src",
     "lib",
     "tsconfig.json",
-    "tsconfig.base.json",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
     "cordis.patch.yml",
@@ -63,7 +62,7 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -130,7 +129,8 @@
     "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
     "@deepseek-ai/dsh-typert-protocol": "0.1.1-rc.2",
     "@deepseek-ai/dsh-user-approval": "0.1.1-rc.2",
-    "@types/node": "^24.13.3",
+    "@tsconfig/node22": "^22.0.6",
+    "@types/node": "^22.20.1",
     "typescript": "^5.9.0"
   }
 }
