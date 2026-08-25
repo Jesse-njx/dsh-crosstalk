@@ -25,9 +25,14 @@ Add the bundle to every profile that should participate (each side of a conversa
 
 ```sh
 git clone https://github.com/Jesse-njx/dsh-crosstalk
-dsh plugin --profile web add /path/to/dsh-crosstalk
-dsh plugin --profile <other-profile> add /path/to/dsh-crosstalk
+cd dsh-crosstalk
+pnpm install
+pnpm build
+dsh plugin --profile web add "$PWD"
+dsh plugin --profile <other-profile> add "$PWD"
 ```
+
+The linked checkout loads the compiled `lib/`; after changing `src/`, run `pnpm build` again. No reinstall is needed.
 
 (Once the package is published to npm, `dsh plugin add @dsh-crosstalk/bundle` works the same way.)
 

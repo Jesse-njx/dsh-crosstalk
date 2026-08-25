@@ -21,9 +21,14 @@
 
 ```sh
 git clone https://github.com/Jesse-njx/dsh-crosstalk
-dsh plugin --profile web add /path/to/dsh-crosstalk
-dsh plugin --profile <other-profile> add /path/to/dsh-crosstalk
+cd dsh-crosstalk
+pnpm install
+pnpm build
+dsh plugin --profile web add "$PWD"
+dsh plugin --profile <other-profile> add "$PWD"
 ```
+
+目录链接加载的是编译后的 `lib/`；改完 `src/` 后重新运行 `pnpm build` 即可，不需要重装。
 
 （发布到 npm 后，`dsh plugin add @dsh-crosstalk/bundle` 同样可用。）
 
